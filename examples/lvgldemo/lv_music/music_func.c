@@ -687,26 +687,26 @@ static void album_fade_anim_cb(void * var, int32_t v)
     lv_obj_set_style_image_opa(var, v, 0);
 }
 
-const char * lv_demo_music_get_title(uint32_t track_id)
+const char * lv_demo_music_get_title(uint32_t track_idx)
 {
-    if(track_id >= sizeof(title_list) / sizeof(title_list[0])) return NULL;
-    return title_list[track_id];
+    if(track_idx >= sizeof(title_list) / sizeof(title_list[0])) return NULL;
+    return title_list[track_idx];
 }
 
-const char * lv_demo_music_get_artist(uint32_t track_id)
+const char * lv_demo_music_get_artist(uint32_t track_idx)
 {
-    if(track_id >= sizeof(artist_list) / sizeof(artist_list[0])) return NULL;
-    return artist_list[track_id];
+    if(track_idx >= sizeof(artist_list) / sizeof(artist_list[0])) return NULL;
+    return artist_list[track_idx];
 }
 
-const char * lv_demo_music_get_genre(uint32_t track_id)
+const char * lv_demo_music_get_genre(uint32_t track_idx)
 {
-    if(track_id >= sizeof(genre_list) / sizeof(genre_list[0])) return NULL;
-    return genre_list[track_id];
+    if(track_idx >= sizeof(genre_list) / sizeof(genre_list[0])) return NULL;
+    return genre_list[track_idx];
 }
 
-uint32_t lv_demo_music_get_track_length(uint32_t track_id)
+uint32_t lv_demo_music_get_track_length(uint32_t track_idx)
 {
-    if(track_id >= sizeof(time_list) / sizeof(time_list[0])) return 0;
-    return time_list[track_id];
+    if(track_idx >= sizeof(time_list) / sizeof(time_list[0])) return 0;
+    return time_list[track_idx];
 }

@@ -33,7 +33,7 @@ if(CONFIG_EXAMPLES_LVGLDEMO)
     DEPENDS
     lvgl
     SRCS
-    lvgldemo.c lv_music/music_app.c lv_music/music_func.c lv_music/music_list.c lv_music/music_res.c)
-
-    target_include_directories(lvgldemo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lv_music)
+    lvgldemo.c lv_music/music_app.c lv_music/music_func.c lv_music/music_list.c lv_music/music_res.c
+    INCLUDE_DIRECTORIES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lv_music)
 endif()

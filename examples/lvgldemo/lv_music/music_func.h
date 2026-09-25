@@ -3,7 +3,11 @@
 
 #include <lvgl/lvgl.h>
 
-#  define LV_DEMO_MUSIC_HANDLE_SIZE  20
+#define LV_DEMO_MUSIC_HANDLE_SIZE   20
+#define LV_DEMO_MUSIC_LARGE         0
+#define LV_DEMO_MUSIC_SQUARE        0
+#define LV_DEMO_MUSIC_ROUND         0
+#define LV_DEMO_MUSIC_LANDSCAPE     0
 
 extern const lv_image_dsc_t img_lv_demo_music_list_border;
 
