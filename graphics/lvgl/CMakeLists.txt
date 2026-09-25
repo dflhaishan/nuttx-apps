@@ -65,6 +65,11 @@ if(CONFIG_GRAPHICS_LVGL)
   target_sources(lvgl PRIVATE ${SRCS})
   target_include_directories(lvgl PRIVATE ${LVGL_DIR})
   target_compile_options(lvgl PRIVATE -Wno-shadow)
+  target_link_libraries(nuttx PRIVATE
+      -Wl,--whole-archive
+      lvgl
+      -Wl,--no-whole-archive
+  )
 
   if(NOT CONFIG_LV_ASSERT_HANDLER_INCLUDE STREQUAL "")
     target_compile_definitions(lvgl PRIVATE "LV_ASSERT_HANDLER=ASSERT(0)\;")

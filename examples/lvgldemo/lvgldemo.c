@@ -34,6 +34,8 @@
 #include <uv.h>
 #endif
 
+#include "music_func.h"
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -157,13 +159,7 @@ int main(int argc, FAR char *argv[])
 
 //       goto demo_end;
 //     }
-    lv_obj_t * btn1 = lv_button_create(lv_screen_active());
-    lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -40);
-    lv_obj_t * imagebutton1 = lv_imagebutton_create(lv_screen_active());
-    lv_obj_align(imagebutton1, LV_ALIGN_CENTER, 0, 0);
-    lv_draw_triangle_dsc_t draw_dsc;
-    lv_draw_triangle_dsc_init(&draw_dsc);
-    lv_draw_triangle(NULL, &draw_dsc);
+    lv_apps_creat();
 
 #ifdef CONFIG_LV_USE_NUTTX_LIBUV
   lv_nuttx_uv_loop(&ui_loop, &result);
