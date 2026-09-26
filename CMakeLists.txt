@@ -80,4 +80,6 @@ endif()
 add_subdirectory(tools) # after traversing all subdirectories
 add_subdirectory(builtin) # must be last
 
+add_subdirectory(feature)
+
 nuttx_generate_kconfig()

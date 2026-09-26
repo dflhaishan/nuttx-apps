@@ -1,0 +1,29 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config FEATURE_PTHREAD
+	tristate "os feature of pthread example"
+	default m
+	---help---
+		Enable the pthread example
+
+if FEATURE_PTHREAD
+
+config FEATURE_PTHREAD_PROGNAME
+	string "Program name"
+	default "pthread"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config FEATURE_PTHREAD_PRIORITY
+	int "pthread task priority"
+	default 100
+
+config FEATURE_PTHREAD_STACKSIZE
+	int "pthread stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif
