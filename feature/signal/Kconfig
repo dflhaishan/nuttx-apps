@@ -1,0 +1,29 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config FEATURE_SIGNAL
+	tristate "os feature of signal example"
+	default m
+	---help---
+		Enable the signal example
+
+if FEATURE_SIGNAL
+
+config FEATURE_SIGNAL_PROGNAME
+	string "Program name"
+	default "signal"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config FEATURE_SIGNAL_PRIORITY
+	int "signal task priority"
+	default 100
+
+config FEATURE_SIGNAL_STACKSIZE
+	int "signal stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif
