@@ -3,7 +3,7 @@ if(CONFIG_FEATURE_SIGNAL)
     NAME
     ${CONFIG_FEATURE_SIGNAL_PROGNAME}
     SRCS
-    main.c
+    main.c btn_process.c led_process.c
     STACKSIZE
     ${CONFIG_FEATURE_SIGNAL_STACKSIZE}
     PRIORITY
