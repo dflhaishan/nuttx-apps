@@ -26,8 +26,8 @@
 
 #include <nuttx/config.h>
 #include <stdio.h>
-#include <lvgl/lvgl.h>
-#include "lv_music/music_func.h"
+#include <pthread.h>
+#include "main.h"
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -36,59 +36,10 @@
  * hello_main
  ****************************************************************************/
 
-static void* thread_num(FAR void *arg)
-{
-    lv_nuttx_dsc_t info;
-    lv_nuttx_result_t result;
-
-    if (lv_is_initialized()) {
-        LV_LOG_ERROR("LVGL already initialized! aborting.");
-        return NULL;
-    }
-
-    lv_init();
-
-    lv_nuttx_dsc_init(&info);
-
-#ifdef CONFIG_LV_USE_NUTTX_LCD
-    info.fb_path = "/dev/lcd0";
-#endif
-    lv_nuttx_init(&info, &result);
-    if (result.disp == NULL) {
-        LV_LOG_ERROR("lv_demos initialization failure!");
-        return NULL;
-    }
-
-    lv_apps_creat();
-
-    while (1) {
-        uint32_t idle;
-        idle = lv_timer_handler();
-
-        /* Minimum sleep of 1ms */
-
-        idle = idle ? idle : 1;
-        usleep(idle * 1000);
-    }
-
-    return NULL;
-}
-
 int main(int argc, FAR char *argv[])
 {
-    pthread_t thread1;
-    pthread_attr_t attr1 = {
-        .priority     = PTHREAD_DEFAULT_PRIORITY,
-        .policy       = SCHED_NORMAL,
-        .inheritsched = PTHREAD_EXPLICIT_SCHED,
-        .detachstate  = PTHREAD_CREATE_JOINABLE,
-        .stackaddr    = NULL,
-        .stacksize    = 20480,
-        .guardsize    = PTHREAD_GUARD_DEFAULT,
-    };
-
     int ret;
-    ret = pthread_create(&thread1, &attr1, thread_num, NULL);
+    ret = pthread_create(&ui_thread, &ui_attr, ui_process, NULL);
     if (ret != 0) {
         printf("ERROR, pthread_create, ret %d\n", ret);
         ASSERT(false);

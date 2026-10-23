@@ -6,6 +6,7 @@
 /*********************
  *      INCLUDES
  *********************/
+#include <mqueue.h>
 #include "music_func.h"
 
 /*********************
@@ -72,6 +73,8 @@ static const lv_font_t * font_large;
 static uint32_t track_id;
 static bool playing;
 static lv_obj_t * play_obj;
+
+extern mqd_t ui_mq;
 
 /**********************
  *      MACROS
@@ -255,6 +258,8 @@ void lv_demo_music_resume(void)
 
     lv_obj_add_state(play_obj, LV_STATE_CHECKED);
 
+    uint32_t ui_resume = 1;
+    mq_send(ui_mq, (const char *)&ui_resume, sizeof(ui_resume), 0);
 }
 
 void lv_demo_music_pause(void)
@@ -264,6 +269,9 @@ void lv_demo_music_pause(void)
     lv_image_set_scale(album_image_obj, LV_SCALE_NONE);
     if(sec_counter_timer) lv_timer_pause(sec_counter_timer);
     lv_obj_remove_state(play_obj, LV_STATE_CHECKED);
+
+    uint32_t ui_pause = 2;
+    mq_send(ui_mq, (const char *)&ui_pause, sizeof(ui_pause), 0);
 }
 
 /**********************
