@@ -452,6 +452,7 @@ static lv_obj_t * create_ctrl_box(lv_obj_t * parent)
     lv_obj_set_grid_cell(icon, LV_GRID_ALIGN_CENTER, 2, 1, LV_GRID_ALIGN_CENTER, 0, 1);
     lv_obj_add_event_cb(icon, prev_click_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_add_flag(icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_group_add_obj(lv_group_get_default(), icon);
 
     play_obj = lv_imagebutton_create(cont);
     lv_imagebutton_set_src(play_obj, LV_IMAGEBUTTON_STATE_RELEASED, NULL, &img_lv_demo_music_btn_play, NULL);
@@ -469,6 +470,7 @@ static lv_obj_t * create_ctrl_box(lv_obj_t * parent)
     lv_obj_set_grid_cell(icon, LV_GRID_ALIGN_CENTER, 4, 1, LV_GRID_ALIGN_CENTER, 0, 1);
     lv_obj_add_event_cb(icon, next_click_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_add_flag(icon, LV_OBJ_FLAG_CLICKABLE);
+    lv_group_add_obj(lv_group_get_default(), icon);
 
     LV_IMAGE_DECLARE(img_lv_demo_music_slider_knob);
     slider_obj = lv_slider_create(cont);
@@ -672,6 +674,8 @@ static void prev_click_event_cb(lv_event_t * e)
 {
     LV_UNUSED(e);
     lv_demo_music_album_next(false);
+    uint32_t ui_pre = 3;
+    mq_send(ui_mq, (const char *)&ui_pre, sizeof(ui_pre), 0);
 }
 
 static void next_click_event_cb(lv_event_t * e)
@@ -680,6 +684,8 @@ static void next_click_event_cb(lv_event_t * e)
     if(code == LV_EVENT_CLICKED) {
         lv_demo_music_album_next(true);
     }
+    uint32_t ui_next = 4;
+    mq_send(ui_mq, (const char *)&ui_next, sizeof(ui_next), 0);
 }
 
 static void timer_cb(lv_timer_t * t)
