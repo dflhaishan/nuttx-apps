@@ -28,7 +28,6 @@ pthread_attr_t ui_attr = {
     .stacksize    = 10240,
     .guardsize    = PTHREAD_GUARD_DEFAULT,
 };
-mqd_t ui_mq;
 
 void* ui_process(FAR void *arg)
 {
@@ -54,19 +53,6 @@ void* ui_process(FAR void *arg)
     }
 
     lv_apps_creat();
-
-    struct mq_attr ui_mq_attr = {
-        .mq_maxmsg = 3,
-        .mq_msgsize = 4,
-        .mq_flags = 0,
-        .mq_curmsgs = 0
-    };
-
-    ui_mq = mq_open("/btn_mq", O_RDWR | O_CREAT, 0666, &ui_mq_attr);
-    if (ui_mq < 0) {
-        printf("ERROR: failed to open btn_mq\n");
-        return NULL;
-    }
 
     while (1) {
         uint32_t idle;

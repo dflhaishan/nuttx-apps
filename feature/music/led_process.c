@@ -10,9 +10,6 @@
 #define LED_DEVPATH "/dev/userleds"
 #define LEDS_SIGNO 32
 
-extern sem_t btn_sem;
-extern mqd_t btn_mq;
-
 pthread_t led_thread;
 pthread_attr_t led_attr = {
     .priority     = PTHREAD_DEFAULT_PRIORITY,
@@ -45,15 +42,21 @@ void* led_process(FAR void* arg)
         .ul_led = 0,
         .ul_on = false
     };
-    int btn_msg;
+    int ui_msg;
+
+    mqd_t led_mq = mq_open("/ui_mq", O_RDONLY);
+    if (led_mq < 0) {
+        printf("ERROR: failed to open led_mq\n");
+        close(fd_led);
+        return NULL;
+    }
 
     while (1) {
-        // ret = sem_wait(&btn_sem);
-        ret = mq_receive(btn_mq, (char *)&btn_msg, sizeof(btn_msg), NULL);
+        ret = mq_receive(led_mq, (char *)&ui_msg, sizeof(ui_msg), NULL);
         if (ret < 0) {
             continue;
         }
-        printf("btn_msg %d\n", btn_msg);
+        printf("ui_msg %d\n", ui_msg);
         led1.ul_on = !(led1.ul_on);
         ret = ioctl(fd_led, ULEDIOC_SETLED, &led1);
         if (ret < 0) {

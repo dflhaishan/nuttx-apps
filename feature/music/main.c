@@ -27,6 +27,7 @@
 #include <nuttx/config.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <mqueue.h>
 #include "main.h"
 /****************************************************************************
  * Public Functions
@@ -35,11 +36,33 @@
 /****************************************************************************
  * hello_main
  ****************************************************************************/
+mqd_t ui_mq;
 
 int main(int argc, FAR char *argv[])
 {
+    struct mq_attr ui_mq_attr = {
+        .mq_maxmsg = 3,
+        .mq_msgsize = 4,
+        .mq_flags = 0,
+        .mq_curmsgs = 0
+    };
+
+    ui_mq = mq_open("/ui_mq", O_WRONLY | O_CREAT, 0666, &ui_mq_attr);
+    if (ui_mq < 0) {
+        printf("ERROR: failed to open ui_mq\n");
+        ASSERT(false);
+        return EXIT_FAILURE;
+    }
+
     int ret;
     ret = pthread_create(&ui_thread, &ui_attr, ui_process, NULL);
+    if (ret != 0) {
+        printf("ERROR, pthread_create, ret %d\n", ret);
+        ASSERT(false);
+        return EXIT_FAILURE;
+    }
+
+    ret = pthread_create(&led_thread, &led_attr, led_process, NULL);
     if (ret != 0) {
         printf("ERROR, pthread_create, ret %d\n", ret);
         ASSERT(false);
