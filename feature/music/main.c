@@ -27,7 +27,7 @@
 #include <nuttx/config.h>
 #include <stdio.h>
 #include <lvgl/lvgl.h>
-
+#include "lv_music/music_func.h"
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -35,37 +35,15 @@
 /****************************************************************************
  * hello_main
  ****************************************************************************/
-static void btn1_handler(lv_event_t * e)
-{
-    lv_event_code_t code = lv_event_get_code(e);
 
-    if(code == LV_EVENT_CLICKED) {
-        LV_LOG_USER("Clicked");
-    }
-}
-
-static void lv_apps_creat(void)
-{
-    lv_obj_t * label;
-
-    lv_obj_t * btn1 = lv_button_create(lv_screen_active());
-    lv_obj_add_event_cb(btn1, btn1_handler, LV_EVENT_ALL, NULL);
-    lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -40);
-    lv_obj_remove_flag(btn1, LV_OBJ_FLAG_PRESS_LOCK);
-
-    label = lv_label_create(btn1);
-    lv_label_set_text(label, "Button");
-    lv_obj_center(label);
-}
-
-int main(int argc, FAR char *argv[])
+static void* thread_num(FAR void *arg)
 {
     lv_nuttx_dsc_t info;
     lv_nuttx_result_t result;
 
     if (lv_is_initialized()) {
         LV_LOG_ERROR("LVGL already initialized! aborting.");
-        return -1;
+        return NULL;
     }
 
     lv_init();
@@ -78,7 +56,7 @@ int main(int argc, FAR char *argv[])
     lv_nuttx_init(&info, &result);
     if (result.disp == NULL) {
         LV_LOG_ERROR("lv_demos initialization failure!");
-        return 1;
+        return NULL;
     }
 
     lv_apps_creat();
@@ -93,5 +71,32 @@ int main(int argc, FAR char *argv[])
         usleep(idle * 1000);
     }
 
+    return NULL;
+}
+
+int main(int argc, FAR char *argv[])
+{
+    pthread_t thread1;
+    pthread_attr_t attr1 = {
+        .priority     = PTHREAD_DEFAULT_PRIORITY,
+        .policy       = SCHED_NORMAL,
+        .inheritsched = PTHREAD_EXPLICIT_SCHED,
+        .detachstate  = PTHREAD_CREATE_JOINABLE,
+        .stackaddr    = NULL,
+        .stacksize    = 20480,
+        .guardsize    = PTHREAD_GUARD_DEFAULT,
+    };
+
+    int ret;
+    ret = pthread_create(&thread1, &attr1, thread_num, NULL);
+    if (ret != 0) {
+        printf("ERROR, pthread_create, ret %d\n", ret);
+        ASSERT(false);
+        return EXIT_FAILURE;
+    }
+
+    while (1) {
+        usleep(1000 * 1000);
+    }
     return 0;
 }

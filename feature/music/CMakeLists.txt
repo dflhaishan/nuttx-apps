@@ -3,11 +3,13 @@ if(CONFIG_FEATURE_MUSIC)
     NAME
     ${CONFIG_FEATURE_MUSIC_PROGNAME}
     SRCS
-    main.c
+    main.c lv_music/music_app.c lv_music/music_func.c lv_music/music_list.c lv_music/music_res.c
     STACKSIZE
     ${CONFIG_FEATURE_MUSIC_STACKSIZE}
     PRIORITY
     ${CONFIG_FEATURE_MUSIC_PRIORITY}
     MODULE
-    ${CONFIG_FEATURE_MUSIC})
+    ${CONFIG_FEATURE_MUSIC}
+    DEPENDS
+    lvgl)
 endif()
