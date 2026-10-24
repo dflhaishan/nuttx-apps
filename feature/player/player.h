@@ -1,13 +1,29 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <mqueue.h>
+#include <pthread.h>
 #include <nuttx/audio/audio.h>
+
+enum player_state {
+    PLAYER_STATE_IDLE = 0,
+    PLAYER_STATE_PLAYING,
+    PLAYER_STATE_PAUSED
+};
+
 struct player_t {
     int fd_dev;
     int fd_file;
     int format;
     int type;
     struct dec_ops_t *dec_ops;
+    mqd_t mq;
+    enum player_state state;
+    uint16_t volume;            /* Volume as a whole percentage (0-100) */
+    uint16_t balance;           /* Balance as a whole % (0=left off, 100=right off) */
+    uint8_t treble;             /* Treble as a whole % */
+    uint8_t bass;              /* Bass as a whole % */
+    pthread_mutex_t mutex;
 };
 
 struct dec_ops_t {
@@ -26,6 +42,18 @@ struct file_fmt_t {
 int player_fmtfromextension(const char *pfilename, int *subfmt);
 
 struct dec_ops_t *player_decopsfromformat(int format);
+
+int player_setvolume(uint16_t volume);
+
+int player_setbalance(uint16_t balance);
+
+int player_settreble(uint8_t treble);
+
+int player_setbass(uint8_t bass);
+
+int player_readbuffer(struct ap_buffer_s *apb);
+
+int player_enqueuebuffer(struct ap_buffer_s *apb);
 
 int player_getmp3subformat(void);
 struct dec_ops_t *player_getmp3dec_ops(void);
