@@ -7,7 +7,8 @@ struct player_t player = {
     .fd_dev  = -1,
     .fd_file = -1,
     .format  = 0,
-    .type    = 0
+    .type    = 0,
+    .dec_ops = NULL
 };
 
 static const struct file_fmt_t file_fmt[] = {
@@ -63,20 +64,18 @@ int player_fmtfromextension(const char *pfilename, int *subfmt)
   return AUDIO_FMT_UNDEF;
 }
 
-int player_get_dec_ops(struct player_t *pplayer, int format)
+struct dec_ops_t *player_decopsfromformat(int format)
 {
-    int ret = 0;
-    int i;
-    for (i = 0; i < (sizeof(file_fmt) / sizeof(struct file_fmt_t)); i++) {
+    struct dec_ops_t * dec_ops = NULL;
+
+    for (int i = 0; i < (sizeof(file_fmt) / sizeof(struct file_fmt_t)); i++) {
         if (format == file_fmt[i].format) {
             if (file_fmt[i].getdec_ops) {
-                pplayer->dec_ops = file_fmt[i].getdec_ops();
+                dec_ops = file_fmt[i].getdec_ops();
             }
             break;
         }
     }
-    if (!pplayer->dec_ops) {
-        ret = -1;
-    }
-    return ret;
+
+    return dec_ops;
 }

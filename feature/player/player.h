@@ -25,7 +25,7 @@ struct file_fmt_t {
 
 int player_fmtfromextension(const char *pfilename, int *subfmt);
 
-int player_get_dec_ops(struct player_t *pplayer, int format);
+struct dec_ops_t *player_decopsfromformat(int format);
 
 int player_getmp3subformat(void);
 struct dec_ops_t *player_getmp3dec_ops(void);

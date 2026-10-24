@@ -73,7 +73,8 @@ void* player_process(FAR void* arg)
         return NULL;
     }
 
-    if (player_get_dec_ops(&player, file_fmt) < 0) {
+    player.dec_ops = player_decopsfromformat(file_fmt);
+    if (!player.dec_ops) {
         printf("ERROR: Can not find dec ops for file_fmt: %d\n", file_fmt);
         return NULL;        
     }
