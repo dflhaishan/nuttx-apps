@@ -61,6 +61,7 @@ int main(int argc, FAR char *argv[])
         ASSERT(false);
         return EXIT_FAILURE;
     }
+    pthread_setname_np(ui_thread, "ui_thread");
 
     ret = pthread_create(&led_thread, &led_attr, led_process, NULL);
     if (ret != 0) {
@@ -68,6 +69,7 @@ int main(int argc, FAR char *argv[])
         ASSERT(false);
         return EXIT_FAILURE;
     }
+    pthread_setname_np(led_thread, "led_thread");
 
     while (1) {
         usleep(1000 * 1000);
