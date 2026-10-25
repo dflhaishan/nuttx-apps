@@ -92,7 +92,7 @@ int player_init(struct player_t *player)
     player->dec_ops = player_decopsfromformat(file_format);
     if (!player->dec_ops) {
         printf("ERROR: Can not find dec ops for file_format: %d\n", file_format);
-        return -EINVAL;        
+        return -EINVAL;
     }
 
     uint32_t samprate = 0;
@@ -104,6 +104,7 @@ int player_init(struct player_t *player)
             return -EINVAL;
         }
     }
+    printf("player file: samprate %ld, chans %d, bps %d\n", samprate, chans, bps);
 
     ret = ioctl(player->fd_dev, AUDIOIOC_RESERVE, 0);
     if (ret < 0) {
@@ -377,7 +378,7 @@ int player_readbuffer(struct player_t *player, struct ap_buffer_s *apb)
 
     ret = player->dec_ops->fill_data(player->fd_file, apb);
     if (ret < 0) {
-        printf("ERROR: player readbuffer failed\n");
+        printf("ERROR: player readbuffer failed %d\n", ret);
     }
 
     return ret;
