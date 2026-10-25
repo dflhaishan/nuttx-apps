@@ -28,62 +28,60 @@ pthread_attr_t player_attr = {
 void* player_process(FAR void* arg)
 {
     int ret = 0;
-    struct player_t *player = NULL;
+    struct player_t player = { 0 };
     ret = player_init(&player);
     if (ret < 0) {
         printf("ERROR: Failed to init player %d\n", ret);
-        if (player) {
-            if (player->fd_dev >=0) {
-                close(player->fd_dev);
-                player->fd_dev = -1;
-            }
-            if (player->fd_file >= 0) {
-                close(player->fd_file);
-                player->fd_dev = -1;
-            }
+        if (player.fd_dev > 0) {
+            close(player.fd_dev);
+            player.fd_dev = -1;
+        }
+        if (player.fd_file > 0) {
+            close(player.fd_file);
+            player.fd_dev = -1;
         }
         return NULL;
     }
 
-    printf("%s\n", player->running ? "Playing..." : "Not running");
+    printf("%s\n", player.running ? "Playing..." : "Not running");
 
     ssize_t size;
     struct audio_msg_s msg;
     unsigned int prio;
-    while (player->running) {
-        size = mq_receive(player->mq, (char *)&msg, sizeof(msg), &prio);
+    while (player.running) {
+        size = mq_receive(player.mq, (char *)&msg, sizeof(msg), &prio);
         if (size != sizeof(msg)) {
             continue;
         }
 
         switch (msg.msg_id) {
             case AUDIO_MSG_DEQUEUE:
-                if (player->streaming) {
-                    ret = player_readbuffer(msg.u.ptr);
+                if (player.streaming) {
+                    ret = player_readbuffer(&player, msg.u.ptr);
                     if (ret < 0) {
-                        player->streaming = false;
+                        player.streaming = false;
                     } else {
-                        ret = player_enqueuebuffer(msg.u.ptr);
+                        ret = player_enqueuebuffer(&player, msg.u.ptr);
                         if (ret < 0) {
-                            player->streaming = false;
-                            player->failed = true;
+                            player.streaming = false;
+                            player.failed = true;
                         }
                     }
                 }
                 break;
             case AUDIO_MSG_STOP:
-                ret = ioctl(player->fd_dev, AUDIOIOC_STOP, 0);
+                ret = ioctl(player.fd_dev, AUDIOIOC_STOP, 0);
                 if (ret < 0) {
                     printf("ERROR: failed ioctl AUDIOIOC_STOP\n");
                 }
-                player->streaming = false;
+                player.streaming = false;
                 break;
             case AUDIO_MSG_COMPLETE:
-                ret = ioctl(player->fd_dev, AUDIOIOC_STOP, 0);
+                ret = ioctl(player.fd_dev, AUDIOIOC_STOP, 0);
                 if (ret < 0) {
                     printf("ERROR: failed ioctl AUDIOIOC_STOP\n");
                 }
-                player->running = false;
+                player.running = false;
                 break;
             default:
                 break;

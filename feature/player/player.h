@@ -42,23 +42,23 @@ struct file_fmt_t {
     struct dec_ops_t *(*getdec_ops)(void);
 };
 
-int player_init(struct player_t **pplayer);
+int player_init(struct player_t *player);
 
 int player_fmtfromextension(const char *pfilename, int *subfmt);
 
 struct dec_ops_t *player_decopsfromformat(int format);
 
-int player_setvolume(uint16_t volume);
+int player_setvolume(struct player_t *player, uint16_t volume);
 
-int player_setbalance(uint16_t balance);
+int player_setbalance(struct player_t *player, uint16_t balance);
 
-int player_settreble(uint8_t treble);
+int player_settreble(struct player_t *player, uint8_t treble);
 
-int player_setbass(uint8_t bass);
+int player_setbass(struct player_t *player, uint8_t bass);
 
-int player_readbuffer(struct ap_buffer_s *apb);
+int player_readbuffer(struct player_t *player, struct ap_buffer_s *apb);
 
-int player_enqueuebuffer(struct ap_buffer_s *apb);
+int player_enqueuebuffer(struct player_t *player, struct ap_buffer_s *apb);
 
 int player_getmp3subformat(void);
 struct dec_ops_t *player_getmp3dec_ops(void);

@@ -9,39 +9,36 @@
 #define PLAYER_MQPATH "/music_mq"
 #define MUSIC_FILEPATH "/mnt/sd/teers.mp3"
 
-struct player_t player = { 0 };
-
 static const struct file_fmt_t file_fmt[] = {
     /*ext   format          getsubformat            dec_ops*/
     {"mp3", AUDIO_FMT_MP3,  player_getmp3subformat, player_getmp3dec_ops},
 };
 
-int player_init(struct player_t **pplayer)
+int player_init(struct player_t *player)
 {
     int ret = 0;
-    *pplayer = &player;
 
-    player.state   = PLAYER_STATE_IDLE;
+    player->state   = PLAYER_STATE_IDLE;
 
-    player.fd_dev = open(PLAYER_DEVPATH, O_RDWR);
-    if (player.fd_dev < 0) {
+    player->fd_dev = open(PLAYER_DEVPATH, O_RDWR);
+    if (player->fd_dev < 0) {
         printf("ERROR: Failed to open file %s\n", PLAYER_DEVPATH);
         return -errno;
     }
 
-    player.fd_file = open(MUSIC_FILEPATH, O_RDONLY);
-    if (player.fd_file < 0) {
+    player->fd_file = open(MUSIC_FILEPATH, O_RDONLY);
+    if (player->fd_file < 0) {
         printf("ERROR: Failed to open file %s\n", MUSIC_FILEPATH);
         return -errno;
     }
 
-    if (pthread_mutex_init(&player.mutex, NULL) < 0) {
+    if (pthread_mutex_init(&player->mutex, NULL) < 0) {
         printf("ERROR: init mutex failed\n");
         return -errno;
     }
 
     struct ap_buffer_info_s  buf_info = { 0 };
-    ret = ioctl(player.fd_dev, AUDIOIOC_GETBUFFERINFO, (unsigned long)&buf_info);
+    ret = ioctl(player->fd_dev, AUDIOIOC_GETBUFFERINFO, (unsigned long)&buf_info);
     if (ret < 0) {
         /* Driver doesn't report its buffer size.  Use our default. */
         buf_info.nbuffers = 2;
@@ -53,12 +50,12 @@ int player_init(struct player_t **pplayer)
         .mq_curmsgs = 0,
         .mq_flags = 0,
     };
-    player.mq = mq_open(PLAYER_MQPATH, O_RDWR | O_CREAT, 0644, &mq_attr);
-    if (player.mq < 0) {
+    player->mq = mq_open(PLAYER_MQPATH, O_RDWR | O_CREAT, 0644, &mq_attr);
+    if (player->mq < 0) {
         printf("ERROR: open %s failed\n", PLAYER_MQPATH);
         return -errno; 
     }
-    ret = ioctl(player.fd_dev, AUDIOIOC_REGISTERMQ, (unsigned long)player.mq);
+    ret = ioctl(player->fd_dev, AUDIOIOC_REGISTERMQ, (unsigned long)player->mq);
     if (ret < 0) {
         printf("ERROR: failed ioctl AUDIOIOC_REGISTERMQ\n");
         return -errno; 
@@ -69,16 +66,16 @@ int player_init(struct player_t **pplayer)
         .ac_type = AUDIO_TYPE_QUERY,
         .ac_subtype = AUDIO_TYPE_QUERY,
     };
-    ret = ioctl(player.fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
+    ret = ioctl(player->fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
     if (ret != caps.ac_len) {
         printf("ERROR: Failed ioctl AUDIOIOC_GETCAPS\n");
         return -EINVAL;
     }
 
-    player.format = caps.ac_format.b[0] | (caps.ac_format.b[1] << 8);
-    player.type = caps.ac_controls.b[0];
+    player->format = caps.ac_format.b[0] | (caps.ac_format.b[1] << 8);
+    player->type = caps.ac_controls.b[0];
 
-    printf("player format:0x%02x type:0x%02x\n", player.format, player.type);
+    printf("player format:0x%02x type:0x%02x\n", player->format, player->type);
 
     int file_format = AUDIO_FMT_UNDEF;
     int file_subformat = AUDIO_FMT_UNDEF;
@@ -87,28 +84,28 @@ int player_init(struct player_t **pplayer)
         printf("ERROR: music file format error\n");
         return -EINVAL;            
     }
-    if ((player.format & (1 << (file_format - 1))) == 0 || (player.type & AUDIO_TYPE_OUTPUT) == 0) {
+    if ((player->format & (1 << (file_format - 1))) == 0 || (player->type & AUDIO_TYPE_OUTPUT) == 0) {
         printf("ERROR: Format not supported by device: %d\n", file_format);
         return -EINVAL;        
     }
 
-    player.dec_ops = player_decopsfromformat(file_format);
-    if (!player.dec_ops) {
+    player->dec_ops = player_decopsfromformat(file_format);
+    if (!player->dec_ops) {
         printf("ERROR: Can not find dec ops for file_format: %d\n", file_format);
         return -EINVAL;        
     }
 
     uint32_t samprate = 0;
     uint8_t chans = 0, bps = 0;
-    if (player.dec_ops->pre_parse) {
-        ret = player.dec_ops->pre_parse(player.fd_file, &samprate, &chans, &bps);
+    if (player->dec_ops->pre_parse) {
+        ret = player->dec_ops->pre_parse(player->fd_file, &samprate, &chans, &bps);
         if (ret != 0) {
             printf("player dec_ops pre_parse return %d\n", ret);
             return -EINVAL;
         }
     }
 
-    ret = ioctl(player.fd_dev, AUDIOIOC_RESERVE, 0);
+    ret = ioctl(player->fd_dev, AUDIOIOC_RESERVE, 0);
     if (ret < 0) {
         printf("ERROR: Failed to reserve device: %d\n", ret);
         return -errno;
@@ -117,7 +114,7 @@ int player_init(struct player_t **pplayer)
     caps.ac_len = sizeof(caps);
     caps.ac_type = AUDIO_TYPE_OUTPUT;
     caps.ac_subtype = AUDIO_TYPE_QUERY;
-    ret = ioctl(player.fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
+    ret = ioctl(player->fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
     if (ret != caps.ac_len) {
         printf("ERROR: Failed ioctl AUDIOIOC_GETCAPS\n");
         return -EINVAL;
@@ -140,7 +137,7 @@ int player_init(struct player_t **pplayer)
         cap_desc.caps.ac_controls.b[2] = bps;
         cap_desc.caps.ac_subtype = file_format;
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
             return -errno;
@@ -155,53 +152,53 @@ int player_init(struct player_t **pplayer)
         buf_desc.numbytes = buf_info.buffer_size;
         buf_desc.u.pbuffer = &buffers[i];
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_ALLOCBUFFER, (unsigned long)&buf_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_ALLOCBUFFER, (unsigned long)&buf_desc);
         if (ret != sizeof(buf_desc)) {
             printf("ERROR: could not allocate buffer %d\n", i);
             return -EINVAL;
         }
     }
 
-    player.streaming = true;
-    player.running = true;
-    player.failed = false;
+    player->streaming = true;
+    player->running = true;
+    player->failed = false;
 
     for (i = 0; i < buf_info.nbuffers; i++) {
-        ret = player_readbuffer(buffers[i]);
+        ret = player_readbuffer(player, buffers[i]);
         if (ret < 0) {
             printf("ERROR: player dec_ops fill data failed %d\n", i);
-            player.streaming = false;
+            player->streaming = false;
             if (i == 0) {
-                player.running = false;
+                player->running = false;
             }
         } else {
-            ret = player_enqueuebuffer(buffers[i]);
+            ret = player_enqueuebuffer(player, buffers[i]);
             if (ret < 0) {
-                player.streaming = false;
-                player.failed = true;
+                player->streaming = false;
+                player->failed = true;
                 break;
             }
         }
     }
 
-    if (player.running && !(player.failed)) {
-        ret = ioctl(player.fd_dev, AUDIOIOC_START, 0);
+    if (player->running && !(player->failed)) {
+        ret = ioctl(player->fd_dev, AUDIOIOC_START, 0);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_START\n");
-            player.failed = true;
+            player->failed = true;
         }
     }
 
-    if (player.running && !(player.failed)) {
-        player.state = PLAYER_STATE_PLAYING;
-        player_setvolume(400);
-        player_setbalance(500);
-        player_setbass(50);
-        player_settreble(50);
+    if (player->running && !(player->failed)) {
+        player->state = PLAYER_STATE_PLAYING;
+        player_setvolume(player, 400);
+        player_setbalance(player, 500);
+        player_setbass(player, 50);
+        player_settreble(player, 50);
     }
 
     printf("%d buffers queued, running=%d streaming=%d failed=%d\n",
-                i, player.running, player.streaming, player.failed);
+                i, player->running, player->streaming, player->failed);
 
     return ret;
 }
@@ -270,115 +267,115 @@ struct dec_ops_t *player_decopsfromformat(int format)
     return dec_ops;
 }
 
-int player_setvolume(uint16_t volume)
+int player_setvolume(struct player_t *player, uint16_t volume)
 {
     struct audio_caps_desc_s cap_desc = { 0 };
     int ret = 0;
-    pthread_mutex_lock(&player.mutex);
+    pthread_mutex_lock(&player->mutex);
 
-    if (player.state == PLAYER_STATE_PLAYING) {
+    if (player->state == PLAYER_STATE_PLAYING) {
         cap_desc.caps.ac_len = sizeof(struct audio_caps_s);
         cap_desc.caps.ac_type = AUDIO_TYPE_FEATURE;
         cap_desc.caps.ac_format.hw = AUDIO_FU_VOLUME;
         cap_desc.caps.ac_controls.hw[0] = volume;
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
-            pthread_mutex_unlock(&player.mutex);
+            pthread_mutex_unlock(&player->mutex);
             return -1;
         }
     }
 
-    player.volume = volume;
-    pthread_mutex_unlock(&player.mutex);
+    player->volume = volume;
+    pthread_mutex_unlock(&player->mutex);
     printf("player volume: %d\n", volume);
     return 0;
 }
 
-int player_setbalance(uint16_t balance)
+int player_setbalance(struct player_t *player, uint16_t balance)
 {
     struct audio_caps_desc_s cap_desc = { 0 };
     int ret = 0;
-    pthread_mutex_lock(&player.mutex);
+    pthread_mutex_lock(&player->mutex);
 
-    if (player.state == PLAYER_STATE_PLAYING) {
+    if (player->state == PLAYER_STATE_PLAYING) {
         cap_desc.caps.ac_len = sizeof(struct audio_caps_s);
         cap_desc.caps.ac_type = AUDIO_TYPE_FEATURE;
         cap_desc.caps.ac_format.hw = AUDIO_FU_BALANCE;
         cap_desc.caps.ac_controls.hw[0] = balance;
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
-            pthread_mutex_unlock(&player.mutex);
+            pthread_mutex_unlock(&player->mutex);
             return -1;
         }
     }
 
-    player.balance = balance;
-    pthread_mutex_unlock(&player.mutex);
+    player->balance = balance;
+    pthread_mutex_unlock(&player->mutex);
     printf("player balance: %d\n", balance);
     return 0;    
 }
 
-int player_settreble(uint8_t treble)
+int player_settreble(struct player_t *player, uint8_t treble)
 {
     struct audio_caps_desc_s cap_desc = { 0 };
     int ret = 0;
-    pthread_mutex_lock(&player.mutex);
+    pthread_mutex_lock(&player->mutex);
 
-    if (player.state == PLAYER_STATE_PLAYING) {
+    if (player->state == PLAYER_STATE_PLAYING) {
         cap_desc.caps.ac_len = sizeof(struct audio_caps_s);
         cap_desc.caps.ac_type = AUDIO_TYPE_FEATURE;
         cap_desc.caps.ac_format.hw = AUDIO_FU_TREBLE;
         cap_desc.caps.ac_controls.b[0] = treble;
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
-            pthread_mutex_unlock(&player.mutex);
+            pthread_mutex_unlock(&player->mutex);
             return -1;
         }
     }
 
-    player.treble = treble;
-    pthread_mutex_unlock(&player.mutex);
+    player->treble = treble;
+    pthread_mutex_unlock(&player->mutex);
     printf("player treble: %d\n", treble);
     return 0;    
 }
 
-int player_setbass(uint8_t bass)
+int player_setbass(struct player_t *player, uint8_t bass)
 {
     struct audio_caps_desc_s cap_desc = { 0 };
     int ret = 0;
-    pthread_mutex_lock(&player.mutex);
+    pthread_mutex_lock(&player->mutex);
 
-    if (player.state == PLAYER_STATE_PLAYING) {
+    if (player->state == PLAYER_STATE_PLAYING) {
         cap_desc.caps.ac_len = sizeof(struct audio_caps_s);
         cap_desc.caps.ac_type = AUDIO_TYPE_FEATURE;
         cap_desc.caps.ac_format.hw = AUDIO_FU_BASS;
         cap_desc.caps.ac_controls.b[0] = bass;
 
-        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        ret = ioctl(player->fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
         if (ret < 0) {
             printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
-            pthread_mutex_unlock(&player.mutex);
+            pthread_mutex_unlock(&player->mutex);
             return -1;
         }
     }
 
-    player.bass = bass;
-    pthread_mutex_unlock(&player.mutex);
+    player->bass = bass;
+    pthread_mutex_unlock(&player->mutex);
     printf("player bass: %d\n", bass);
     return 0;     
 }
 
-int player_readbuffer(struct ap_buffer_s *apb)
+int player_readbuffer(struct player_t *player, struct ap_buffer_s *apb)
 {
     int ret = 0;
 
-    ret = player.dec_ops->fill_data(player.fd_file, apb);
+    ret = player->dec_ops->fill_data(player->fd_file, apb);
     if (ret < 0) {
         printf("ERROR: player readbuffer failed\n");
     }
@@ -386,7 +383,7 @@ int player_readbuffer(struct ap_buffer_s *apb)
     return ret;
 }
 
-int player_enqueuebuffer(struct ap_buffer_s *apb)
+int player_enqueuebuffer(struct player_t *player, struct ap_buffer_s *apb)
 {
     struct audio_buf_desc_s buf_desc = { 0};
     int ret = 0;
@@ -394,7 +391,7 @@ int player_enqueuebuffer(struct ap_buffer_s *apb)
     buf_desc.numbytes = apb->nbytes;
     buf_desc.u.buffer = apb;
 
-    ret = ioctl(player.fd_dev, AUDIOIOC_ENQUEUEBUFFER, (unsigned long)&buf_desc);
+    ret = ioctl(player->fd_dev, AUDIOIOC_ENQUEUEBUFFER, (unsigned long)&buf_desc);
     if (ret < 0) {
         printf("ERROR: player enqueuebuffer failed\n");
         return -1;
