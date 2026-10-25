@@ -9,10 +9,17 @@
 #define PLAYER_MQPATH "/music_mq"
 #define MUSIC_FILEPATH "/mnt/sd/teers.mp3"
 
+struct player_t default_player = { 0 };
+
 static const struct file_fmt_t file_fmt[] = {
     /*ext   format          getsubformat            dec_ops*/
     {"mp3", AUDIO_FMT_MP3,  player_getmp3subformat, player_getmp3dec_ops},
 };
+
+struct player_t *get_default_player(void)
+{
+    return &default_player;
+}
 
 int player_init(struct player_t *player)
 {

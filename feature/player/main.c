@@ -52,6 +52,14 @@ int main(int argc, FAR char *argv[])
     }
     pthread_setname_np(player_thread, "player");
 
+    ret = pthread_create(&ui_thread, &ui_attr, ui_process, NULL);
+    if (ret != 0) {
+        printf("ERROR, ui_thread created failed, ret %d\n", ret);
+        ASSERT(false);
+        return EXIT_FAILURE;
+    }
+    pthread_setname_np(ui_thread, "ui"); 
+
     while (1) {
         usleep(1000);
     }

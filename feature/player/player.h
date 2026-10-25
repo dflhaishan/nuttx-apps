@@ -70,4 +70,6 @@ int player_pause(struct player_t *player);
 
 int player_resume(struct player_t *player);
 
+struct player_t *get_default_player(void);
+
 #endif
