@@ -1,27 +1,210 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <errno.h>
 #include <nuttx/audio/audio.h>
 #include "player.h"
 
-struct player_t player = {
-    .fd_dev  = -1,
-    .fd_file = -1,
-    .format  = 0,
-    .type    = 0,
-    .dec_ops = NULL,
-    .mq      = -1,
-    .state   = PLAYER_STATE_IDLE,
-    .volume  = 400,
-    .balance = 500,
-    .treble = 50,
-    .bass = 50,
-};
+#define PLAYER_DEVPATH "/dev/audio/vs1053d0"
+#define PLAYER_MQPATH "/music_mq"
+#define MUSIC_FILEPATH "/mnt/sd/teers.mp3"
+
+struct player_t player = { 0 };
 
 static const struct file_fmt_t file_fmt[] = {
     /*ext   format          getsubformat            dec_ops*/
     {"mp3", AUDIO_FMT_MP3,  player_getmp3subformat, player_getmp3dec_ops},
 };
+
+int player_init(struct player_t **pplayer)
+{
+    int ret = 0;
+    *pplayer = &player;
+
+    player.state   = PLAYER_STATE_IDLE;
+
+    player.fd_dev = open(PLAYER_DEVPATH, O_RDWR);
+    if (player.fd_dev < 0) {
+        printf("ERROR: Failed to open file %s\n", PLAYER_DEVPATH);
+        return -errno;
+    }
+
+    player.fd_file = open(MUSIC_FILEPATH, O_RDONLY);
+    if (player.fd_file < 0) {
+        printf("ERROR: Failed to open file %s\n", MUSIC_FILEPATH);
+        return -errno;     
+    }
+
+    if (pthread_mutex_init(&player.mutex, NULL) < 0) {
+        printf("ERROR: init mutex failed\n");
+        return -errno;
+    }
+
+    struct ap_buffer_info_s  buf_info = { 0 };
+    ret = ioctl(player.fd_dev, AUDIOIOC_GETBUFFERINFO, (unsigned long)&buf_info);
+    if (ret < 0) {
+        /* Driver doesn't report its buffer size.  Use our default. */
+        buf_info.nbuffers = 2;
+        buf_info.buffer_size = 8192;
+    }
+    struct mq_attr mq_attr = {
+        .mq_maxmsg = buf_info.nbuffers + 8,
+        .mq_msgsize = sizeof(struct audio_msg_s),
+        .mq_curmsgs = 0,
+        .mq_flags = 0,
+    };
+    player.mq = mq_open(PLAYER_MQPATH, O_RDWR | O_CREAT, 0644, &mq_attr);
+    if (player.mq < 0) {
+        printf("ERROR: open %s failed\n", PLAYER_MQPATH);
+        return -errno; 
+    }
+    ret = ioctl(player.fd_dev, AUDIOIOC_REGISTERMQ, (unsigned long)player.mq);
+    if (ret < 0) {
+        printf("ERROR: failed ioctl AUDIOIOC_REGISTERMQ\n");
+        return -errno; 
+    }
+
+    struct audio_caps_s caps = {
+        .ac_len = sizeof(caps),
+        .ac_type = AUDIO_TYPE_QUERY,
+        .ac_subtype = AUDIO_TYPE_QUERY,
+    };
+    ret = ioctl(player.fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
+    if (ret != caps.ac_len) {
+        printf("ERROR: Failed ioctl AUDIOIOC_GETCAPS\n");
+        return -EINVAL;
+    }
+
+    player.format = caps.ac_format.b[0] | (caps.ac_format.b[1] << 8);
+    player.type = caps.ac_controls.b[0];
+
+    printf("player format:0x%02x type:0x%02x\n", player.format, player.type);
+
+    int file_format = AUDIO_FMT_UNDEF;
+    int file_subformat = AUDIO_FMT_UNDEF;
+    file_format = player_fmtfromextension(MUSIC_FILEPATH, &file_subformat);
+    if (file_format == AUDIO_FMT_UNDEF) {
+        printf("ERROR: music file format error\n");
+        return -EINVAL;            
+    }
+    if ((player.format & (1 << (file_format - 1))) == 0 || (player.type & AUDIO_TYPE_OUTPUT) == 0) {
+        printf("ERROR: Format not supported by device: %d\n", file_format);
+        return -EINVAL;        
+    }
+
+    player.dec_ops = player_decopsfromformat(file_format);
+    if (!player.dec_ops) {
+        printf("ERROR: Can not find dec ops for file_format: %d\n", file_format);
+        return -EINVAL;        
+    }
+
+    uint32_t samprate = 0;
+    uint8_t chans = 0, bps = 0;
+    if (player.dec_ops->pre_parse) {
+        ret = player.dec_ops->pre_parse(player.fd_file, &samprate, &chans, &bps);
+        if (ret != 0) {
+            printf("player dec_ops pre_parse return %d\n", ret);
+            return -EINVAL;
+        }
+    }
+
+    ret = ioctl(player.fd_dev, AUDIOIOC_RESERVE, 0);
+    if (ret < 0) {
+        printf("ERROR: Failed to reserve device: %d\n", ret);
+        return -errno;
+    }
+
+    caps.ac_len = sizeof(caps);
+    caps.ac_type = AUDIO_TYPE_OUTPUT;
+    caps.ac_subtype = AUDIO_TYPE_QUERY;
+    ret = ioctl(player.fd_dev, AUDIOIOC_GETCAPS, (unsigned long)&caps);
+    if (ret != caps.ac_len) {
+        printf("ERROR: Failed ioctl AUDIOIOC_GETCAPS\n");
+        return -EINVAL;
+
+    }
+    if ((caps.ac_channels >> 4) && (chans < (caps.ac_channels >> 4))) {
+        printf("ERROR: ac_channels invalid %d\n", caps.ac_channels);           
+        return -EINVAL;
+    }
+
+    struct audio_caps_desc_s cap_desc = { 0 };
+    int chmap = 0;
+    if (chans && samprate && bps) {
+        cap_desc.caps.ac_len = sizeof(struct audio_caps_s);
+        cap_desc.caps.ac_type = AUDIO_TYPE_OUTPUT;
+        cap_desc.caps.ac_channels = chans;
+        cap_desc.caps.ac_chmap = chmap;
+        cap_desc.caps.ac_controls.hw[0] = samprate;
+        cap_desc.caps.ac_controls.b[3] = samprate >> 16;
+        cap_desc.caps.ac_controls.b[2] = bps;
+        cap_desc.caps.ac_subtype = file_format;
+
+        ret = ioctl(player.fd_dev, AUDIOIOC_CONFIGURE, (unsigned long)&cap_desc);
+        if (ret < 0) {
+            printf("ERROR: failed ioctl AUDIOIOC_CONFIGURE\n");
+            return -errno;
+        }
+    }
+
+    struct ap_buffer_s *buffers[buf_info.nbuffers];
+    memset(buffers, 0, sizeof(buffers));
+    struct audio_buf_desc_s buf_desc = { 0 };
+    int i;
+    for (i = 0; i < buf_info.nbuffers; i++) {
+        buf_desc.numbytes = buf_info.buffer_size;
+        buf_desc.u.pbuffer = &buffers[i];
+
+        ret = ioctl(player.fd_dev, AUDIOIOC_ALLOCBUFFER, (unsigned long)&buf_desc);
+        if (ret != sizeof(buf_desc)) {
+            printf("ERROR: could not allocate buffer %d\n", i);
+            return -EINVAL;
+        }
+    }
+
+    player.streaming = true;
+    player.running = true;
+    player.failed = false;
+
+    for (i = 0; i < buf_info.nbuffers; i++) {
+        ret = player_readbuffer(buffers[i]);
+        if (ret < 0) {
+            printf("ERROR: player dec_ops fill data failed %d\n", i);
+            player.streaming = false;
+            if (i == 0) {
+                player.running = false;
+            }
+        } else {
+            ret = player_enqueuebuffer(buffers[i]);
+            if (ret < 0) {
+                player.streaming = false;
+                player.failed = true;
+                break;
+            }
+        }
+    }
+
+    if (player.running && !(player.failed)) {
+        ret = ioctl(player.fd_dev, AUDIOIOC_START, 0);
+        if (ret < 0) {
+            printf("ERROR: failed ioctl AUDIOIOC_START\n");
+            player.failed = true;
+        }
+    }
+
+    if (player.running && !(player.failed)) {
+        player.state = PLAYER_STATE_PLAYING;
+        player_setvolume(400);
+        player_setbalance(500);
+        player_setbass(50);
+        player_settreble(50);
+    }
+
+    printf("%d buffers queued, running=%d streaming=%d failed=%d\n",
+                i, player.running, player.streaming, player.failed);
+
+    return ret;
+}
 
 int player_fmtfromextension(const char *pfilename, int *subfmt)
 {

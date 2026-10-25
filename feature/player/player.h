@@ -24,6 +24,9 @@ struct player_t {
     uint8_t treble;             /* Treble as a whole % */
     uint8_t bass;              /* Bass as a whole % */
     pthread_mutex_t mutex;
+    bool streaming;
+    bool running;
+    bool failed;
 };
 
 struct dec_ops_t {
@@ -38,6 +41,8 @@ struct file_fmt_t {
     int        (*getsubformat)(void);
     struct dec_ops_t *(*getdec_ops)(void);
 };
+
+int player_init(struct player_t **pplayer);
 
 int player_fmtfromextension(const char *pfilename, int *subfmt);
 
