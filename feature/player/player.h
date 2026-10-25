@@ -63,4 +63,11 @@ int player_enqueuebuffer(struct player_t *player, struct ap_buffer_s *apb);
 int player_getmp3subformat(void);
 struct dec_ops_t *player_getmp3dec_ops(void);
 
+
+int player_stop(struct player_t *player);
+
+int player_pause(struct player_t *player);
+
+int player_resume(struct player_t *player);
+
 #endif

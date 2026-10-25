@@ -400,3 +400,93 @@ int player_enqueuebuffer(struct player_t *player, struct ap_buffer_s *apb)
 
     return 0;
 }
+
+int player_stop(struct player_t *player)
+{
+  struct audio_msg_s term_msg;
+
+  DEBUGASSERT(player != NULL);
+
+  /* Validate we are not in IDLE state */
+
+  pthread_mutex_lock(&player->mutex);
+  if (player->state == PLAYER_STATE_IDLE)
+    {
+      pthread_mutex_unlock(&player->mutex);
+      return OK;
+    }
+
+  pthread_mutex_unlock(&player->mutex);
+
+  /* Notify the playback thread that it needs to cancel the playback */
+
+  term_msg.msg_id = AUDIO_MSG_STOP;
+  term_msg.u.data = 0;
+  mq_send(player->mq, (const char *)&term_msg, sizeof(term_msg),1);
+
+  /* Join the thread.  The thread will do all the cleanup. */
+
+//   nxplayer_jointhread(pplayer);
+
+  return OK;
+}
+
+int player_pause(struct player_t *player)
+{
+  struct audio_msg_s term_msg;
+
+  DEBUGASSERT(player != NULL);
+
+  /* Validate we are not in IDLE state */
+
+  pthread_mutex_lock(&player->mutex);
+  if (player->state == PLAYER_STATE_IDLE)
+    {
+      pthread_mutex_unlock(&player->mutex);
+      return OK;
+    }
+
+  pthread_mutex_unlock(&player->mutex);
+
+  /* Notify the playback thread that it needs to cancel the playback */
+
+  term_msg.msg_id = AUDIO_MSG_PAUSE;
+  term_msg.u.data = 0;
+  mq_send(player->mq, (const char *)&term_msg, sizeof(term_msg), 1);
+
+  /* Join the thread.  The thread will do all the cleanup. */
+
+//   nxplayer_jointhread(pplayer);
+
+  return OK;
+}
+
+int player_resume(struct player_t *player)
+{
+  struct audio_msg_s term_msg;
+
+  DEBUGASSERT(player != NULL);
+
+  /* Validate we are not in IDLE state */
+
+  pthread_mutex_lock(&player->mutex);
+  if (player->state == PLAYER_STATE_IDLE)
+    {
+      pthread_mutex_unlock(&player->mutex);
+      return OK;
+    }
+
+  pthread_mutex_unlock(&player->mutex);
+
+  /* Notify the playback thread that it needs to cancel the playback */
+
+  term_msg.msg_id = AUDIO_MSG_RESUME;
+  term_msg.u.data = 0;
+  mq_send(player->mq, (const char *)&term_msg, sizeof(term_msg), 1);
+
+  /* Join the thread.  The thread will do all the cleanup. */
+
+//   nxplayer_jointhread(pplayer);
+
+  return OK;
+}

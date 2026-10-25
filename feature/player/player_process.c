@@ -83,6 +83,18 @@ void* player_process(FAR void* arg)
                 }
                 player.running = false;
                 break;
+            case AUDIO_MSG_PAUSE:
+                ret = ioctl(player.fd_dev, AUDIOIOC_PAUSE, 0);
+                if (ret < 0) {
+                    printf("ERROR: failed ioctl AUDIOIOC_PAUSE\n");
+                }
+                break;
+            case AUDIO_MSG_RESUME:
+                ret = ioctl(player.fd_dev, AUDIOIOC_RESUME, 0);
+                if (ret < 0) {
+                    printf("ERROR: failed ioctl AUDIOIOC_RESUME\n");
+                }
+                break;
             default:
                 break;
         }
