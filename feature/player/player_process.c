@@ -29,9 +29,19 @@ void* player_process(FAR void* arg)
 {
     int ret = 0;
     struct player_t *player = NULL;
-
-    if (player_init(&player) < 0) {
-        printf("ERROR: Failed to init player\n");
+    ret = player_init(&player);
+    if (ret < 0) {
+        printf("ERROR: Failed to init player %d\n", ret);
+        if (player) {
+            if (player->fd_dev >=0) {
+                close(player->fd_dev);
+                player->fd_dev = -1;
+            }
+            if (player->fd_file >= 0) {
+                close(player->fd_file);
+                player->fd_dev = -1;
+            }
+        }
         return NULL;
     }
 

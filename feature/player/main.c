@@ -50,7 +50,7 @@ int main(int argc, FAR char *argv[])
         ASSERT(false);
         return EXIT_FAILURE;
     }
-    pthread_setname_np(player_thread, "player_thread");
+    pthread_setname_np(player_thread, "player");
 
     while (1) {
         usleep(1000);
