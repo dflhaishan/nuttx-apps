@@ -32,7 +32,7 @@ int player_init(struct player_t **pplayer)
     player.fd_file = open(MUSIC_FILEPATH, O_RDONLY);
     if (player.fd_file < 0) {
         printf("ERROR: Failed to open file %s\n", MUSIC_FILEPATH);
-        return -errno;     
+        return -errno;
     }
 
     if (pthread_mutex_init(&player.mutex, NULL) < 0) {
