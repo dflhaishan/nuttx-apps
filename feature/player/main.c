@@ -58,7 +58,25 @@ int main(int argc, FAR char *argv[])
         ASSERT(false);
         return EXIT_FAILURE;
     }
-    pthread_setname_np(ui_thread, "ui"); 
+    pthread_setname_np(ui_thread, "ui");
+
+    int policy;
+    struct sched_param param;
+    ret = pthread_getschedparam(ui_thread, &policy, &param);
+    if (ret != 0) {
+        printf("ERROR, pthread_getschedparam failed, ret %d\n", ret);
+        ASSERT(false);
+        return EXIT_FAILURE;        
+    }
+
+    param.sched_priority = param.sched_priority - 1;
+    ret = pthread_setschedparam(player_thread, policy, &param);
+    if (ret != 0) {
+        printf("ERROR, pthread_setschedparam failed, ret %d\n", ret);
+        ASSERT(false);
+        return EXIT_FAILURE;         
+    }
+
 
     while (1) {
         usleep(1000);
